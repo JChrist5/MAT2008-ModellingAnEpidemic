@@ -1,0 +1,126 @@
+%%%%% Initial Data %%%%%
+t_data = [0 1 2 3 4 5 6 7 8 9 10 11 12 13];
+I_data = [1 3 25 72 222 282 256 233 189 123 70 25 11 4];
+N = 763;
+
+S0 = N-1;
+I0 = I_data(1);
+R0 = 0;
+
+%%%%% Q1 %%%%%
+plot(t_data, I_data)
+title("Infected students vs Time in days")
+
+%%%%% Q2 %%%%% 
+%% Variables guess
+a =  0.02;
+r = 0.05;
+
+%% SIR Model using random initial values
+f = @(t, x) [-a* x(1)*x(2); a * x(1)*x(2)- r*x(2); r*x(2)];
+[t_ode,xa1]=ode45(f, t_data, [S0 I0 R0]);
+
+plot(t_data, I_data, t_ode,xa1(:,2),'k')
+
+%%% Finding best fit using MSE %%%
+cur_a = 0;
+cur_r = 0;
+prev_r = 1;
+prev_a = 1;
+prev_mean_squared_error = 1000000000000000000000;
+
+% Calculates the MSE for different value of a and r
+% Only keeps in memory the a and r with the best MSE value
+% Update the values till they don't change no more
+while prev_r ~= cur_r || prev_a ~= cur_a
+    for a = 0.00001:0.0001:1
+            f = @(t, x) [-a* x(1)*x(2); a * x(1)*x(2)- cur_r*x(2); cur_r*x(2)];
+            [t_ode,xa]=ode45(f, t_data, [S0 I0 R0]);
+            prediction = xa(:,2)';
+            mean_squared_error = (mean((I_data-prediction).^2));
+            if prev_mean_squared_error > mean_squared_error
+                best_a = a;
+                prev_mean_squared_error = mean_squared_error;
+            end
+    end 
+    prev_a = cur_a;
+    cur_a = best_a;
+
+    for r = 0.00001:0.0001:1
+            f = @(t, x) [-cur_a* x(1)*x(2); cur_a * x(1)*x(2)- r*x(2); r*x(2)];
+            [t_ode,xa]=ode45(f, t_data, [S0 I0 R0]);
+            prediction = xa(:,2)';
+            mean_squared_error = (mean((I_data-prediction).^2));
+            if prev_mean_squared_error > mean_squared_error
+                best_r = r;
+                prev_mean_squared_error = mean_squared_error;
+            end
+    end
+    prev_r = cur_r;
+    cur_r = best_r;
+end
+
+%% Model using best initial values
+f = @(t, x) [-cur_a* x(1)*x(2); cur_a * x(1)*x(2)- cur_r*x(2); cur_r*x(2)];
+[t_ode,xa]=ode45(f, t_data, [S0 I0 R0]);
+
+prediction = xa(:,2)';
+mean_squared_error = (mean((I_data-prediction).^2))
+root_mean_squared_error = sqrt(mean_squared_error)
+MAE = mean(I_data-prediction)
+
+
+comp_table = cat(1,I_data,prediction);
+display(comp_table)
+
+plot(t_data, I_data,"r" , t_ode,xa1(:,2),'b', t_ode,xa(:,2),'k')
+title("Model Vs Reality")
+legend('Reality','Random','Best fit');
+
+%%%%% Q4 %%%%%
+R0 = N * cur_a / cur_r
+
+%%%%% Q5 %%%%%
+%%% Finding best fit with parameter b %%%
+a = curr_a;
+r = curr_r;
+prev_mean_squared_error = 1000000000000000000000;
+for b = 0.00001:0.0001:1
+        f = @(t, x) [-a* x(1)*x(2) + b*x(3); a * x(1)*x(2)- r*x(2); r*x(2) - b*x(3)];
+        [t_ode,xa]=ode45(f, t_data, [S0 I0 R0]);
+        prediction = xa(:,2)';
+        mean_squared_error = (mean((I_data-prediction).^2));
+        if prev_mean_squared_error > mean_squared_error
+            best_b = b;
+            prev_mean_squared_error = mean_squared_error;
+        end
+end 
+b = best_b
+
+%% SIRS Model
+f = @(t, x) [-a* x(1)*x(2) + b*x(3); a * x(1)*x(2)- r*x(2); r*x(2) - b*x(3)];
+[t_ode,xa]=ode45(f, t_data, [S0 I0 R0]);
+
+
+prediction = xa(:,2)';
+mean_squared_error = (mean((I_data-prediction).^2))
+plot(t_data, I_data, t_ode,xa(:,2),'k')
+
+%%%%% Q6 %%%%%
+%%% SEIR model
+S0 = 1000;     % Initial number of susceptible individuals
+I0 = 1;        % Initial number of infected individuals
+E0 = 5;        % Initial number of exposed individuals
+R0 = 0;        % Initial number of recovered individuals
+% Variables expressed as rate (values between 0 and 1)
+a = 0.01;      % Rate of infection
+b = 0.1;       % Rate of recovery
+e = 1;         % Rate representing time before individuals become infectious
+
+%% SEIR model
+f = @(t, x) [-a* x(1)*x(3) + b*x(4); a * x(1)*x(3)- e*x(2); e*x(2) - r*x(3); r*x(3) -  b*x(4)];
+[t_ode,xa]=ode45(f, t_data, [S0 E0 I0 R0]);
+
+prediction = xa(:,2)';  
+plot(t_ode, xa(:,1), "b", t_ode,xa(:,2),'k', t_ode, xa(:,3), "r", t_ode, xa(:,4), "y");
+legend('S','E','I','R');
